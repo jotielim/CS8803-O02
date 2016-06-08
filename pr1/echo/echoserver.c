@@ -87,7 +87,8 @@ int main(int argc, char **argv) {
     //    with the server.
     // 5. Send and receive data.
 
-    int listenfd, connfd, n;
+    int listenfd, connfd;
+    ssize_t n;
     struct sockaddr_in serv_addr;
 
     char buffer[BUFSIZE];
@@ -117,12 +118,12 @@ int main(int argc, char **argv) {
 
         if ((n = recv(connfd, buffer, MAXSTRING, 0)) > 0) {
             // echo back to the client
-            send(connfd, buffer, n, 0);
+            send(connfd, buffer, (size_t)n, 0);
         }
 
         if (n < 0) {
             perror("Read error");
-            exit(1);
+            exit(EXIT_FAILURE);
         }
 
         // close the accepted connection

@@ -55,8 +55,7 @@ int main(int argc, char **argv) {
 
     // 1. Create a socket with the socket() system call
     // 2. Connect the socket to the address of the server using the connect() system call
-    // 3. Send and receive data. There are a number of ways to do this, but the simplest is to use
-    //    the read() and write() system calls.
+    // 3. Send and receive data.
 
     int sockfd;
     struct sockaddr_in serv_addr;
