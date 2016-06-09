@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
     //    with the server.
     // 5. Send and receive data.
 
-    int listenfd, connfd, n;
+    int listenfd, connfd;
     struct sockaddr_in serv_addr;
 
     char buffer[BUFSIZE];

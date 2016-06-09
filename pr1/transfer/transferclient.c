@@ -115,6 +115,7 @@ int recv_file(int sockfd, char *filename) {
     recv_count = 0;
     recv_size = 0;
 
+    // TODO: place a timeout to terminate the connection
     // receive file from server
     while ((recv_bytes = recv(sockfd, buffer, BUFSIZE, 0)) > 0) {
         recv_count++;
