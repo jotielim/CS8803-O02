@@ -28,12 +28,12 @@ def main():
               'gfclient_mt': 'pr1_gfclient_mt',
               'gfserver_mt': 'pr1_gfserver_mt'}
 
-  files_map = {'pr1_echo_client_server': ['echoclient.c', 'echoserver.c', 'README'],
-              'pr1_transfer': ['transferclient.c', 'transferserver.c', 'README'],
-              'pr1_gfclient': ['gfclient.c', 'README'],
-              'pr1_gfserver': ['gfserver.c', 'README'],
-              'pr1_gfclient_mt': ['gfclient_download.c', 'README'],
-              'pr1_gfserver_mt': ['gfserver_main.c', 'handler.c', 'README']}
+  files_map = {'pr1_echo_client_server': ['echoclient.c', 'echoserver.c', '../readme-student'],
+              'pr1_transfer': ['transferclient.c', 'transferserver.c'],
+              'pr1_gfclient': ['gfclient.c'],
+              'pr1_gfserver': ['gfserver.c'],
+              'pr1_gfclient_mt': ['gfclient_download.c'],
+              'pr1_gfserver_mt': ['gfserver_main.c', 'handler.c']}
 
   quiz = quiz_map[args.quiz]
 
@@ -44,7 +44,7 @@ def main():
                           environment = args.environment, 
                           provider = args.provider)
 
-  timestamp = "{:%Y-%m-%d-%H-%M-%S}".format(datetime.datetime.now())
+  timestamp = "{-%Y-%m-%d-%H-%M-%S}".format(datetime.datetime.now())
 
   while not submission.poll():
     time.sleep(3.0)

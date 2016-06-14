@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
   unsigned short port = 8888;
   char *content = "content.txt";
   gfserver_t *gfs;
-  int nthreads;
+  int nthreads = 1;
 
   if (signal(SIGINT, _sig_handler) == SIG_ERR){
     fprintf(stderr,"Can't catch SIGINT...exiting.\n");

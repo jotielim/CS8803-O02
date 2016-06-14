@@ -1,3 +1,17 @@
+This file is submitted with the echo part. Please resubmit echo when you update
+this file.
+
+Please include:
+- A high level description of your strategies for implementing the various
+	components.  Anything that you think worth noting should be fine.
+- Any observations or insights. We may consider extra points!
+- Known bugs
+- Credits if you used publicly available code.
+- Any improvement suggestions to the project or auto-grader. We may consider
+	extra points!
+
+
+# ECHO
 Client
     1. Create a socket with the socket() system call
     2. Connect the socket to the address of the server using the connect() system call
@@ -11,3 +25,4 @@ Server
     4. Accept a connection with the accept() system call. This call typically blocks until a client connects
        with the server.
     5. Send and receive data.
+

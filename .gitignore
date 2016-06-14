@@ -2,3 +2,9 @@
 .vagrant/
 student.zip
 *-result-*.json
+*.pyc
+.DS_Store
+.bonnie
+*.bak
+pr1/gflib/courses/
+pr1/mtgf/courses/
