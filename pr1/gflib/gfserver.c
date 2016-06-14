@@ -299,29 +299,33 @@ void gfserver_serve(gfserver_t *gfs){
             char *path;
             bool is_valid_request = true;
 
-            // get the scheme, return -1 if not a valid scheme
+            // get the scheme, set is_valid_request to false if not a valid scheme
             scheme = strtok(temp_buffer, " \t");
             if (strcmp(scheme, SCHEME) != 0) {
                 is_valid_request = false;
             }
 
-            // get the method, return -1 if not a valid method
-            method = strtok(NULL, " \t");
-            bool valid_method = check_valid_method(method);
-            if (valid_method != true) {
-                is_valid_request = false;
+            if (is_valid_request) {
+                // get the method, set is_valid_request to false if not a valid method
+                method = strtok(NULL, " \t");
+                bool valid_method = check_valid_method(method);
+                if (valid_method != true) {
+                    is_valid_request = false;
+                }
             }
 
-            // get the path, return -1 if path does not start with '/'
-            path = strtok(NULL, " \t\r\n");
-            if (path[0] != '/') {
-                is_valid_request = false;
+            if (is_valid_request) {
+                // get the path, set is_valid_request to false if path does not start with '/'
+                path = strtok(NULL, " \t\r\n");
+                if (path[0] != '/') {
+                    is_valid_request = false;
+                }
             }
 
             if (is_valid_request != true) {
                 // error
-                perror("Invalid request format");
-                gfs_sendheader(ctx, GF_ERROR, 0);
+                fprintf(stderr, "buffer: '%s'\n", buffer);
+                gfs_sendheader(ctx, GF_FILE_NOT_FOUND, 0);
             } else {
                 printf("Sending the file...\n");
                 printf("path: '%s'\n", path);
