@@ -72,6 +72,8 @@ Vagrant.configure(2) do |config|
             libgmp-dev gcc-multilib valgrind openmpi-bin openmpi-doc libopenmpi-dev \
             portmap rpcbind libcurl4-openssl-dev unzip bzip2 imagemagick libmagickcore-dev
 
+    sudo apt-get install --reinstall ca-certificates
+
     sudo apt-add-repository -y ppa:git-core/ppa
     sudo apt-get -y update
     sudo apt-get -y install git

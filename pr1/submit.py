@@ -44,7 +44,7 @@ def main():
                           environment = args.environment, 
                           provider = args.provider)
 
-  timestamp = "{-%Y-%m-%d-%H-%M-%S}".format(datetime.datetime.now())
+  timestamp = "{:-%Y-%m-%d-%H-%M-%S}".format(datetime.datetime.now())
 
   while not submission.poll():
     time.sleep(3.0)
