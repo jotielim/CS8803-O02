@@ -59,34 +59,35 @@ int main(int argc, char **argv) {
 
     int sockfd;
     struct sockaddr_in serv_addr;
-    struct hostent *he;
+    struct addrinfo hints, *host;
 
     char buffer[BUFSIZE];
     char recvline[BUFSIZE];
+    char port_str[6];
+
+    // convert port to string
+    sprintf(port_str, "%d", portno);
 
     // clean the buffer
     memset(&buffer, 0, BUFSIZE);
 
+    // use getaddrinfo to get the host
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = 0;
+
+    getaddrinfo(hostname, port_str, &hints, &host);
+
     // create the socket
-    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    sockfd = socket(host->ai_family, host->ai_socktype, host->ai_protocol);
+    if (sockfd < 0) {
         perror("Unable to create the socket");
         exit(EXIT_FAILURE);
     }
 
-    // resolve hostname
-    if ((he = gethostbyname(hostname)) == NULL) {
-        perror("Hostname not found");
-        close(sockfd);
-        exit(EXIT_FAILURE); // exit when error or hostname is not found
-    }
-    memset(&serv_addr, 0, sizeof(serv_addr));
-    // copy the network address to sockaddr_in structure
-    memcpy(&serv_addr.sin_addr, he->h_addr_list[0], he->h_length);
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(portno);
-
     // connect the client to the socket
-    if (connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr))) {
+    if (connect(sockfd, host->ai_addr, host->ai_addrlen)) {
         perror("Unable to connect to the server");
         close(sockfd);
         exit(EXIT_FAILURE); // error
