@@ -11,7 +11,7 @@
 
 #include "gfserver.h"
 
-/* 
+/*
  * Modify this file to implement the interface specified in
  * gfserver.h.
  */
@@ -21,7 +21,7 @@
 #define METHOD_POST "POST"
 #define METHOD_PUT "PUT"
 #define METHOD_DELETE "DELETE"
-#define HEADER_RESPONSE "GETFILE %s %d \r\n\r\n"
+#define HEADER_RESPONSE "GETFILE %s %d\r\n\r\n"
 #define END_OF_REQUEST "\r\n\r\n"
 
 #define true 1
@@ -56,15 +56,18 @@ ssize_t gfs_sendheader(gfcontext_t *ctx, gfstatus_t status, size_t file_len){
         case GF_OK:
             // "GETFILE OK %d \r\n\r\n"
             sprintf(header, HEADER_RESPONSE, "OK", (int)file_len);
+            memcpy(header, header, strlen(header));
             break;
         case GF_FILE_NOT_FOUND:
             // "GETFILE FILE_NOT_FOUND 0 \r\n\r\n"
             sprintf(header, HEADER_RESPONSE, "FILE_NOT_FOUND", (int)file_len);
+            memcpy(header, header, strlen(header));
             break;
         case GF_ERROR:
         default:
             // "GETFILE ERROR 0 \r\n\r\n"
             sprintf(header, HEADER_RESPONSE, "ERROR", (int)file_len);
+            memcpy(header, header, strlen(header));
             break;
     }
 
@@ -298,23 +301,19 @@ void gfserver_serve(gfserver_t *gfs){
 
             // get the scheme, return -1 if not a valid scheme
             scheme = strtok(temp_buffer, " \t");
-//            printf("scheme: '%s'\n", scheme);
             if (strcmp(scheme, SCHEME) != 0) {
                 is_valid_request = false;
             }
 
             // get the method, return -1 if not a valid method
             method = strtok(NULL, " \t");
-//            printf("method: '%s'\n", method);
             bool valid_method = check_valid_method(method);
-//            printf("valid_method: '%d'\n", valid_method);
             if (valid_method != true) {
                 is_valid_request = false;
             }
 
             // get the path, return -1 if path does not start with '/'
-            path = strtok(NULL, " \t");
-//            printf("path: '%s'\n", path);
+            path = strtok(NULL, " \t\r\n");
             if (path[0] != '/') {
                 is_valid_request = false;
             }
