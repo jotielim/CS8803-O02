@@ -97,9 +97,6 @@ int main(int argc, char **argv) {
 
     char buffer[BUFSIZE];
 
-    // clean the buffer
-    memset(&buffer, 0, BUFSIZE);
-
     // create socket
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -119,6 +116,9 @@ int main(int argc, char **argv) {
     for ( ; ; ) {
         // accept connection from an incoming client
         connfd = accept(listenfd, (struct sockaddr*)NULL, NULL);
+
+        // clean the buffer
+        memset(&buffer, 0, BUFSIZE);
 
         // send the file
         if (send_file(connfd, filename) < 0) {
