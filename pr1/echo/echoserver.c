@@ -93,9 +93,6 @@ int main(int argc, char **argv) {
 
     char buffer[BUFSIZE];
 
-    // clean the buffer
-    memset(&buffer, 0, BUFSIZE);
-
     // create socket
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -115,6 +112,9 @@ int main(int argc, char **argv) {
     for ( ; ; ) {
         // accept connection from an incoming client
         connfd = accept(listenfd, (struct sockaddr*)NULL, NULL);
+
+        // clean the buffer
+        memset(&buffer, 0, BUFSIZE);
 
         if ((n = recv(connfd, buffer, MAXSTRING, 0)) > 0) {
             // echo back to the client
