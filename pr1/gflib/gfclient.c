@@ -58,6 +58,8 @@ gfcrequest_t *gfc_create(){
     gfr->status = GF_INVALID;
     gfr->filelen = 0;
     gfr->bytesrecv = 0;
+    gfr->headerfunc = NULL;
+    gfr->writefunc = NULL;
 
     return gfr;
 }
@@ -127,11 +129,14 @@ static int parse_response(gfcrequest_t *gfr, char *buffer) {
     }
 
     char *tmp = strtok(NULL, " \t\r\n");
-    res->filelen = atoi(tmp);
+    printf("tmp: '%s'\n", tmp);
+    if (tmp != NULL) {
+        res->filelen = atoi(tmp);
+        gfr->filelen = (size_t)atoi(tmp);
+    }
 
     res->is_valid_response = true;
     gfr->response = res;
-    gfr->filelen = (size_t)atoi(tmp);
 
     return header_size;
 }
@@ -153,7 +158,7 @@ int gfc_perform(gfcrequest_t *gfr){
 
     if ((sockfd = socket(host->ai_family, host->ai_socktype, host->ai_protocol)) < 0) {
         perror("Unable to create the socket");
-        exit(EXIT_FAILURE);
+        return -1;
     }
     gfr->sockfd = sockfd;
 
@@ -177,10 +182,8 @@ int gfc_perform(gfcrequest_t *gfr){
 
     // send request to server
     if (send(sockfd, req, strlen(req), 0) < 0) {
-        gfc_cleanup(gfr);
-        gfc_global_cleanup();
         perror("Error sending request");
-        exit(EXIT_FAILURE);
+        return -1;
     }
 
     printf("Successfully sending request to the server\n");
@@ -188,6 +191,7 @@ int gfc_perform(gfcrequest_t *gfr){
     // TODO: change to while loop
     // read the header
     if ((recv_size = recv(sockfd, buffer, BUFFER_SIZE, 0)) > 0) {
+        printf("response: '%s'\n", buffer);
         // if not NULL, \r\n\r\n exists in buffer. "end of request"
         if (strstr(buffer, END_OF_RESPONSE) != NULL) {
             // parse the request
@@ -201,10 +205,8 @@ int gfc_perform(gfcrequest_t *gfr){
 
     // if header is not in the right format or invalid, return error and exit
     if (header_size == -1 || gfc_get_status(gfr) == GF_INVALID) {
-        gfc_cleanup(gfr);
-        gfc_global_cleanup();
         perror("Header error");
-        exit(EXIT_FAILURE);
+        return -1;
     }
 
     // header callback
