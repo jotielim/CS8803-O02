@@ -12,10 +12,10 @@
 
 #define BUFFER_SIZE 4096
 
-typedef struct req_item_t {
+typedef struct request_item_t {
     gfcontext_t *ctx;
     char path[BUFSIZ];
-} req_item_t;
+} request_item_t;
 
 /**
  * global variables
@@ -26,7 +26,40 @@ static pthread_t *g_workers;
 static pthread_mutex_t g_mutex_queue = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t g_cond_remove = PTHREAD_COND_INITIALIZER;
 
-ssize_t execute_thread(gfcontext_t *ctx, char *path){
+/**
+ * function to add item to the bottom of the queue
+ */
+static void add_item (request_item_t *req) {
+    pthread_mutex_lock(&g_mutex_queue);
+    steque_enqueue(g_queue, (steque_item)req);
+    pthread_mutex_unlock(&g_mutex_queue);
+
+    pthread_cond_signal(&g_cond_remove);
+}
+
+/**
+ * function to remove item from the top of the queue and return the removed item
+ */
+static request_item_t* remove_item () {
+    steque_item item;
+
+    pthread_mutex_lock(&g_mutex_queue);
+
+    // wait until there is content to remove
+    while (steque_isempty(g_queue)) {
+		pthread_cond_wait(&g_cond_remove, &g_mutex_queue);
+	}
+
+    item = steque_pop(g_queue);
+    pthread_mutex_unlock(&g_mutex_queue);
+
+    return (request_item_t*) item;
+}
+
+/**
+ * function to be executed when a thread is available
+ */
+static ssize_t execute_thread (gfcontext_t *ctx, char *path){
     int fildes;
     ssize_t file_len, bytes_transferred;
     ssize_t read_len, write_len;
@@ -61,41 +94,10 @@ ssize_t execute_thread(gfcontext_t *ctx, char *path){
     return bytes_transferred;
 }
 
-/**
- * function to add item to the bottom of the queue
- */
-void add_item(req_item_t *req) {
-    pthread_mutex_lock(&g_mutex_queue);
-    steque_enqueue(g_queue, (steque_item)req);
-    pthread_mutex_unlock(&g_mutex_queue);
-
-    pthread_cond_signal(&g_cond_remove);
-}
-
-/**
- * function to remove item from the top of the queue and return the removed item
- */
-req_item_t* remove_item() {
-    steque_item item;
-
-    pthread_mutex_lock(&g_mutex_queue);
-
-    // wait until there is content to remove
-    while (steque_isempty(g_queue)) {
-		pthread_cond_wait(&g_cond_remove, &g_mutex_queue);
-	}
-
-    item = steque_pop(g_queue);
-    pthread_mutex_unlock(&g_mutex_queue);
-
-    return (req_item_t*) item;
-
-}
-
-void *worker_thread(void *arg) {
+static void *worker_thread (void *arg) {
     // endless loop to process work in the queue
     for ( ; ; ) {
-        req_item_t *item = remove_item();
+        request_item_t *item = remove_item();
         execute_thread(item->ctx, item->path);
         free(item);
     }
@@ -106,7 +108,7 @@ void *worker_thread(void *arg) {
 /**
  * function to initialize the worker thread pool
  */
-void worker_threads_init(int nthreads) {
+void worker_threads_init (int nthreads) {
     int i;
 
     g_num_threads = nthreads;
@@ -129,9 +131,9 @@ void worker_threads_init(int nthreads) {
 /**
  * boss thread
  */
-ssize_t handler_get(gfcontext_t *ctx, char *path, void* arg){
-    req_item_t* req;
-    req = malloc(sizeof(req_item_t));
+ssize_t handler_get (gfcontext_t *ctx, char *path, void* arg){
+    request_item_t* req;
+    req = malloc(sizeof(request_item_t));
 
     req->ctx = ctx;
     memcpy(req->path, path, strlen(path));
