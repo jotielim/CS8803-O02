@@ -126,7 +126,7 @@ static int get_request(gfcontext_t *ctx, char *buffer, int size) {
             n = size - request_size;
         }
 
-        memcpy(buffer + request_size, temp, n); // TODO: buffer overflow?
+        memcpy(buffer + request_size, temp, n);
         request_size += (int)n;
         buffer[request_size] = '\0';
         if (strstr(buffer, END_OF_REQUEST) != NULL) {
@@ -150,61 +150,6 @@ bool check_valid_method (char *method) {
     }
     return false;
 }
-
-// NOTE: not sure why this doesn't work
-// req->path is giving an error later when getting the content `content_get`
-//static int parse_request(gfcontext_t **ctx, char *buffer) {
-//    char temp_buffer[strlen(buffer)];
-//    strcpy(temp_buffer, buffer);
-//
-//    int request_size;
-//    char *scheme;
-//    char *method;
-//    char *path;
-//
-//    struct request_t *req = (struct request_t *)malloc(sizeof(struct request_t));
-//
-//    req->is_valid_request = false;
-//    (*ctx)->request = req;
-//
-//    // get the scheme, return -1 if not a valid scheme
-//    scheme = strtok(temp_buffer, " \t");
-//    printf("scheme: '%s'\n", scheme);
-//    if (strcmp(scheme, SCHEME) != 0) {
-//        return -1;
-//    }
-//    // allocate so that we can reference outside of this function
-//    req->scheme = malloc(sizeof(char) * strlen(scheme));
-//    memcpy(req->scheme, scheme, strlen(scheme));
-//
-//    // get the method, return -1 if not a valid method
-//    method = strtok(NULL, " \t");
-//    printf("method: '%s'\n", method);
-//    bool valid_method = check_valid_method(method);
-//    printf("valid_method: '%d'\n", valid_method);
-//    if (valid_method != true) {
-//        return -1;
-//    }
-//    // allocate so that we can reference outside of this function
-//    req->method = malloc(sizeof(char) * strlen(method));
-//    memcpy(req->method, method, strlen(method));
-//
-//    // get the path, return -1 if path does not start with '/'
-//    path = strtok(NULL, " \t");
-//    printf("path: '%s'\n", path);
-//    if (path[0] != '/') {
-//        return -1;
-//    }
-//    // allocate so that we can reference outside of this function
-//    req->path = malloc(sizeof(char) * strlen(path));
-//    memcpy(req->path, path, strlen(path));
-//
-//    req->is_valid_request = true;
-//    request_size = (int)strlen(buffer);
-//    (*ctx)->request = req;
-//
-//    return request_size;
-//}
 
 void gfserver_serve(gfserver_t *gfs){
     struct sockaddr_in serv_addr;
@@ -242,7 +187,7 @@ void gfserver_serve(gfserver_t *gfs){
 //        struct request_t *req;
         int transfer_size;
 
-        printf("Listening for incoming connection...\n");
+//        printf("Listening for incoming connection...\n");
 
         // accept connection from an incoming client
         if ((ctx->connfd = accept(gfs->listenfd, (struct sockaddr *)&(ctx->client_addr), &client_size)) < 0) {
@@ -250,46 +195,14 @@ void gfserver_serve(gfserver_t *gfs){
             exit(EXIT_FAILURE);
         }
 
-        printf("Incoming client connection was accepted\n");
+//        printf("Incoming client connection was accepted\n");
 
         // get the request from the client
         if (get_request(ctx, buffer, BUFSIZ) < 0) {
             perror("Error receiving request");
             // Do not exit but just close the client's socket
         } else {
-            printf("Request: '%s'\n", buffer);
-
-//            // parse the request i.e. <schema> <method> <path> \r\n\r\n
-//            parse_request(ctx, buffer);
-//
-//            req = ctx->request;
-//
-//            printf("\n**req**\n");
-//            printf("scheme: '%s'\n", req->scheme);
-//            printf("method: '%s'\n", req->method);
-//            printf("path: '%s'\n", req->path);
-//
-//            if (req->is_valid_request != true) {
-//                // error
-//                perror("Invalid request format");
-//                gfs_sendheader(ctx, GF_ERROR, 0);
-//            } else {
-//                printf("\n\n");
-//                printf("Sending the file...\n");
-//                printf("path: '%s'\n", req->path);
-//                printf("hello world\n");
-//                printf("len: %d\n", (int)strlen(req->path));
-//
-//                char path[strlen(req->path)];
-//                strcpy(path, req->path);
-//
-//                printf("req->path: '%s'\n", req->path);
-//                printf("path: '%s'\n", path);
-//
-//                // send the file
-//                transfer_size = (int)gfs->handler(ctx, path, gfs->args);
-//                printf("Transfer: %d bytes\n", transfer_size);
-//            }
+//            printf("Request: '%s'\n", buffer);
 
             // parse the request i.e. <schema> <method> <path> \r\n\r\n
             char temp_buffer[strlen(buffer)];
@@ -339,10 +252,6 @@ void gfserver_serve(gfserver_t *gfs){
         // close the accepted connection
         close(ctx->connfd);
         // clean up and free malloc
-//        free(ctx->request->scheme);
-//        free(ctx->request->method);
-//        free(ctx->request->path);
-//        free(ctx->request);
         free(ctx);
     }
 }

@@ -129,7 +129,7 @@ static int parse_response(gfcrequest_t *gfr, char *buffer) {
     }
 
     char *tmp = strtok(NULL, " \t\r\n");
-    printf("tmp: '%s'\n", tmp);
+//    printf("tmp: '%s'\n", tmp);
     if (tmp != NULL) {
         res->filelen = atoi(tmp);
         gfr->filelen = (size_t)atoi(tmp);
@@ -152,7 +152,7 @@ int gfc_perform(gfcrequest_t *gfr){
 
     // convert port to string
     sprintf(portno, "%d", gfr->port);
-    printf("Port Number: %s\n", portno);
+//    printf("Port Number: %s\n", portno);
 
     getaddrinfo(gfr->server, portno, addr_hints, &host);
 
@@ -162,7 +162,7 @@ int gfc_perform(gfcrequest_t *gfr){
     }
     gfr->sockfd = sockfd;
 
-    printf("Socket is created\n");
+//    printf("Socket is created\n");
 
     if (connect(sockfd, host->ai_addr, host->ai_addrlen) < 0) {
         freeaddrinfo(host);
@@ -172,13 +172,13 @@ int gfc_perform(gfcrequest_t *gfr){
         exit(EXIT_FAILURE);
     }
 
-    printf("Connected to the socket\n");
+//    printf("Connected to the socket\n");
 
     // make sure to clean up
     freeaddrinfo(host);
 
     sprintf(req, HEADER_REQUEST, "GET", gfr->path);
-    printf("Request: '%s'\n", req);
+//    printf("Request: '%s'\n", req);
 
     // send request to server
     if (send(sockfd, req, strlen(req), 0) < 0) {
@@ -186,12 +186,10 @@ int gfc_perform(gfcrequest_t *gfr){
         return -1;
     }
 
-    printf("Successfully sending request to the server\n");
+//    printf("Successfully sending request to the server\n");
 
-    // TODO: change to while loop
     // read the header
     if ((recv_size = recv(sockfd, buffer, BUFFER_SIZE, 0)) > 0) {
-        printf("response: '%s'\n", buffer);
         // if not NULL, \r\n\r\n exists in buffer. "end of request"
         if (strstr(buffer, END_OF_RESPONSE) != NULL) {
             // parse the request
