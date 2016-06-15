@@ -10,9 +10,6 @@
 
 #include "workload.h"
 #include "gfclient.h"
-#include "steque.h"
-
-#define REQSIZE 256
 
 #define USAGE                                                                 \
 "usage:\n"                                                                    \
@@ -36,24 +33,13 @@ static struct option gLongOptions[] = {
         {NULL,            0,                      NULL,             0}
 };
 
-typedef struct context_t {
-    char *server;
+typedef struct client_requests_t {
+    int nrequests;
+    char* server;
     unsigned short port;
-} context_t;
+} client_requests_t;
 
-typedef struct request_item_t {
-    context_t *ctx;
-    char path[REQSIZE];
-} request_item_t;
-
-/**
- * global variables
- */
-static int g_client_num_threads;
-static steque_t *g_client_queue;
-static pthread_t *g_client_workers;
-static pthread_mutex_t g_client_mutex_queue = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t g_client_cond_remove = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t mutex_get_path = PTHREAD_MUTEX_INITIALIZER;
 
 static void Usage() {
     fprintf(stdout, "%s", USAGE);
@@ -100,115 +86,66 @@ static void writecb(void* data, size_t data_len, void *arg){
     fwrite(data, 1, data_len, file);
 }
 
-/**
- * function to add item to the bottom of the queue
- */
-static void add_item (context_t *ctx, char *path) {
-    request_item_t *req = malloc(sizeof(request_item_t));
-
-    req->ctx = ctx;
-    memcpy(req->path, path, strlen(path));
-
-    pthread_mutex_lock(&g_client_mutex_queue);
-    steque_enqueue(g_client_queue, (steque_item)req);
-    pthread_mutex_unlock(&g_client_mutex_queue);
-
-    pthread_cond_signal(&g_client_cond_remove);
-}
-
-/**
- * function to remove item from the top of the queue and return the removed item
- */
-static request_item_t* remove_item () {
-    steque_item item;
-
-    pthread_mutex_lock(&g_client_mutex_queue);
-
-    // wait until there is content to remove
-    while (steque_isempty(g_client_queue)) {
-        pthread_cond_wait(&g_client_cond_remove, &g_client_mutex_queue);
-    }
-
-    item = steque_pop(g_client_queue);
-    pthread_mutex_unlock(&g_client_mutex_queue);
-
-    return (request_item_t*) item;
-}
-
-/**
- * function to be executed when a thread is available
- */
-static void execute_thread (context_t *ctx, char *req_path) {
-    int returncode;
+/* Thread func ======================================================= */
+static void* request_thread(void *arg) {
+    int i;
     gfcrequest_t *gfr;
     FILE *file;
+    char *req_path;
     char local_path[512];
+    int returncode;
+    client_requests_t* req;
 
-    localPath(req_path, local_path);
+    // get the passed arguments
+    req = (client_requests_t*) arg;
 
-    file = openFile(local_path);
+    /*Making the requests...*/
+    for(i = 0; i < req->nrequests; i++){
+        pthread_mutex_lock(&mutex_get_path);
+        req_path = workload_get_path();
+        pthread_mutex_unlock(&mutex_get_path);
 
-    gfr = gfc_create();
-    gfc_set_server(gfr, ctx->server);
-    gfc_set_path(gfr, req_path);
-    gfc_set_port(gfr, ctx->port);
-    gfc_set_writefunc(gfr, writecb);
-    gfc_set_writearg(gfr, file);
+        if(strlen(req_path) > 256){
+            fprintf(stderr, "Request path exceeded maximum of 256 characters\n.");
+            exit(EXIT_FAILURE);
+        }
 
-    fprintf(stdout, "Requesting %s%s\n", ctx->server, req_path);
+        localPath(req_path, local_path);
 
-    if ( 0 > (returncode = gfc_perform(gfr))){
-        fprintf(stdout, "gfc_perform returned an error %d\n", returncode);
-        fclose(file);
-        if ( 0 > unlink(local_path))
-            fprintf(stderr, "unlink failed on %s\n", local_path);
-    }
-    else {
-        fclose(file);
-    }
+        file = openFile(local_path);
 
-    if ( gfc_get_status(gfr) != GF_OK){
-        if ( 0 > unlink(local_path))
-            fprintf(stderr, "unlink failed on %s\n", local_path);
-    }
+        gfr = gfc_create();
+        gfc_set_server(gfr, req->server);
+        gfc_set_path(gfr, req_path);
+        gfc_set_port(gfr, req->port);
+        gfc_set_writefunc(gfr, writecb);
+        gfc_set_writearg(gfr, file);
 
-    fprintf(stdout, "Status: %s\n", gfc_strstatus(gfc_get_status(gfr)));
-    fprintf(stdout, "Received %zu of %zu bytes\n", gfc_get_bytesreceived(gfr), gfc_get_filelen(gfr));
+        fprintf(stdout, "Requesting %s%s\n", req->server, req_path);
 
-    gfc_cleanup(gfr);
-}
+        if ( 0 > (returncode = gfc_perform(gfr))){
+            fprintf(stdout, "gfc_perform returned an error %d\n", returncode);
+            fclose(file);
+            if ( 0 > unlink(local_path))
+                fprintf(stderr, "unlink failed on %s\n", local_path);
+        }
+        else {
+            fclose(file);
+        }
 
-static void *request_thread (void *arg) {
-    while (!steque_isempty(g_client_queue)) {
-        request_item_t *item = remove_item();
-        execute_thread(item->ctx, item->path);
-        free(item);
+        if ( gfc_get_status(gfr) != GF_OK){
+            if ( 0 > unlink(local_path))
+                fprintf(stderr, "unlink failed on %s\n", local_path);
+        }
+
+        fprintf(stdout, "Status: %s\n", gfc_strstatus(gfc_get_status(gfr)));
+        fprintf(stdout, "Received %zu of %zu bytes\n", gfc_get_bytesreceived(gfr), gfc_get_filelen(gfr));
+
+        gfc_cleanup(gfr);
+
     }
 
     pthread_exit(NULL);
-}
-
-/**
- * function to initialize the worker thread pool
- */
-void worker_threads_init (int nthreads) {
-    int i;
-
-    g_client_num_threads = nthreads;
-    g_client_workers = (pthread_t*) malloc(g_client_num_threads * sizeof(pthread_t));
-
-    // initialize
-    // g_client_queue is used to pass work items to the worker thread
-    g_client_queue = (steque_t*) malloc(sizeof(steque_t));
-    steque_init(g_client_queue);
-
-    // create the worker thread pool
-    for (i = 0; i < g_client_num_threads; i++) {
-        if (pthread_create(&g_client_workers[i], NULL, request_thread, NULL) != 0) {
-            fprintf(stderr, "Error creating thread");
-            exit(1);
-        }
-    }
 }
 
 /* Main ========================================================= */
@@ -217,13 +154,13 @@ int main(int argc, char **argv) {
     char *server = "localhost";
     unsigned short port = 8888;
     char *workload_path = "workload.txt";
+    client_requests_t req;
+    pthread_t *client_workers;
 
     int i;
     int option_char = 0;
     int nrequests = 1;
     int nthreads = 1;
-    context_t *ctx = (context_t *)malloc(sizeof(context_t));
-    char *req_path;
     void *rc;
 
     // Parse and set command line arguments
@@ -261,32 +198,27 @@ int main(int argc, char **argv) {
 
     gfc_global_init();
 
-    // initialize the thread
-    worker_threads_init(nthreads);
+    // variables to be used in request_thread
+    req.nrequests = nrequests;
+    req.server = server;
+    req.port = port;
 
-    ctx->server = server;
-    ctx->port = port;
+    client_workers = (pthread_t*) malloc(nthreads * sizeof(pthread_t));
 
-    /*Making the requests...*/
-    for(i = 0; i < nrequests * nthreads; i++){
-        req_path = workload_get_path();
-
-        if(strlen(req_path) > 256){
-            fprintf(stderr, "Request path exceeded maximum of 256 characters\n.");
-            exit(EXIT_FAILURE);
+    // create the threads
+    for(i=0; i<nthreads; i++) {
+        if (pthread_create(&client_workers[i], NULL, request_thread, &req) != 0) {
+            fprintf(stderr, "Error creating thread");
+            exit(1);
         }
-
-        // boss thread add_item() to the pool
-        add_item(ctx, req_path);
     }
 
-    for(i = 0; i < nthreads; i++) {
-        pthread_join(g_client_workers[i], &rc);
+    // join all threads
+    for (i=0; i<nthreads; i++) {
+        pthread_join(client_workers[i], &rc);
     }
 
     gfc_global_cleanup();
-    free(g_client_workers);
-    free(g_client_queue);
 
     return 0;
 }
