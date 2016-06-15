@@ -1,17 +1,7 @@
-This file is submitted with the echo part. Please resubmit echo when you update
-this file.
+README
+======
+In general, the client/server works as follow:
 
-Please include:
-- A high level description of your strategies for implementing the various
-	components.  Anything that you think worth noting should be fine.
-- Any observations or insights. We may consider extra points!
-- Known bugs
-- Credits if you used publicly available code.
-- Any improvement suggestions to the project or auto-grader. We may consider
-	extra points!
-
-
-# ECHO
 Client
     1. Create a socket with the socket() system call
     2. Connect the socket to the address of the server using the connect() system call
@@ -22,7 +12,18 @@ Server
     2. Bind the socket to an address using the bind() system call. For a server socket on the Internet,
        an address consists of a port number on the host machine.
     3. Listen for connections with the listen() system call.
-    4. Accept a connection with the accept() system call. This call typically blocks until a client connects
+    4. Trigger infinite loop to continuously listen
+    5. Accept a connection with the accept() system call. This call typically blocks until a client connects
        with the server.
-    5. Send and receive data.
+    6. Send and receive data.
 
+For the single threaded gflib, the client/server works the same as above. The client sends a request
+GETFILE GET /path/to/file\r\n\r\n to the server. Then, the server reply back with response
+GETFILE OK 12345\r\n\r\n_the_bytes_being_sent_
+
+For the multi threaded mtgf server, we initialize the number of threads can be used by the server. The boss is
+adding jobs to the pool. When the pool is empty, we wait until it's no longer empty. When a job is being added
+to the pool, we signal the waiting condition so that the workers continue to process the response.
+
+For the multi threaded mtgf client, we initialize the number of threads that can be used by the client. For each
+of the threads, we make n request concurrently.
