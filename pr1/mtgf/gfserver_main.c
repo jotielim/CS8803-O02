@@ -29,6 +29,7 @@ static struct option gLongOptions[] = {
 
 
 extern ssize_t handler_get(gfcontext_t *ctx, char *path, void* arg);
+extern void worker_threads_init(int nthreads);
 
 static void _sig_handler(int signo){
   if (signo == SIGINT || signo == SIGTERM){
@@ -80,8 +81,10 @@ int main(int argc, char **argv) {
   if (nthreads < 1) {
     nthreads = 1;
   }
-  
+
   content_init(content);
+
+  worker_threads_init(nthreads);
 
   /*Initializing server*/
   gfs = gfserver_create();
