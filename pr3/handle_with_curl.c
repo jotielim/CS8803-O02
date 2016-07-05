@@ -22,10 +22,10 @@ ssize_t handle_with_file(gfcontext_t *ctx, char *path, void* arg){
 
 	if( 0 > (fildes = open(buffer, O_RDONLY))){
 		if (errno == ENOENT)
-			/* If the file just wasn't found, then send FILE_NOT_FOUND code*/ 
+			/* If the file just wasn't found, then send FILE_NOT_FOUND code*/
 			return gfs_sendheader(ctx, GF_FILE_NOT_FOUND, 0);
 		else
-			/* Otherwise, it must have been a server error. gfserver library will handle*/ 
+			/* Otherwise, it must have been a server error. gfserver library will handle*/
 			return SERVER_FAILURE;
 	}
 

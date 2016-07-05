@@ -24,7 +24,7 @@
 static struct option gLongOptions[] = {
   {"port",          required_argument,      NULL,           'p'},
   {"thread-count",  required_argument,      NULL,           't'},
-  {"server",        required_argument,      NULL,           's'},         
+  {"server",        required_argument,      NULL,           's'},
   {"help",          no_argument,            NULL,           'h'},
   {NULL,            0,                      NULL,             0}
 };
@@ -69,11 +69,11 @@ int main(int argc, char **argv) {
         break;
       case 's': // file-path
         server = optarg;
-        break;                                          
+        break;
       case 'h': // help
         fprintf(stdout, "%s", USAGE);
         exit(0);
-        break;       
+        break;
       default:
         fprintf(stderr, "%s", USAGE);
         exit(1);
@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Invalid (null) server name\n");
     exit(1);
   }
-  
+
   /* SHM initialization...*/
 
   /*Initializing server*/
