@@ -56,20 +56,21 @@ ssize_t handle_with_curl(gfcontext_t *ctx, char *path, void* arg){
         curl_easy_setopt(curl, CURLOPT_URL, buffer);
         // follow redirect
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-
+        // provide callback function
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_memory_callback);
-
+        // write to variable response
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&response);
 
         // Perform the request, res will get the return code
         res = curl_easy_perform(curl);
 
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-
         // check for errors
         if (res != CURLE_OK) {
             fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
         }
+
+        // get http_code
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
 
         if (http_code != 200) {
             // if http_code is not 200, then send FILE_NOT_FOUND
