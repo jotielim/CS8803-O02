@@ -9,3 +9,25 @@ This is YOUR Readme file.  We will manually review your file looking for:
     suite?  If you were going to do this project again, how would you improve it?
 
 
+#Project 3
+
+##Part 1
+
+Libcurl requires to be globally initialized once. Since we are working on multi-threaded proxy, we need to explicitly
+initialize the libcurl using `curl_global_init()` in webproxy.c. In addition, we also need to clean up curl globally
+using `curl_global_cleanup()` in webproxy.c. We also pass the server as GFS_WORKER_ARG so it can be used by the
+callback `handle_with_curl`.
+
+The function `handle_with_curl` performs curl to the given url. When we perform curl using `curl_easy_perform()`, by
+default it will output the data in stdout. Since we want to pass this bytes to the client, we need to provide a write
+function. We can do so by setting the option `CURLOPT_WRITEFUNCTION` and the callback function `write_memory_callback`.
+In `write_memory_callback`, we will store the received bytes in memory, expanding the memory allocation as needed.
+This is better than writing it to a file first, since we are passing the bytes to the client. However, since we are
+storing the chunks of curl data into a variable called `response`, this can cause an issue of insufficient memory if
+the webproxy server does not have big memory hardware, or if we are transferring a file that is bigger than the memory.
+
+If we were going to do this part 1 again, we can improve it by not storing the received data into `response` variable.
+We can directly send the received bytes to the client using `gfs_sendheader` inside the callback
+`write_memory_callback`. However, we still need to first check if the file exists before directly sending the curl
+response. Another option is to create and append to a file when we get out of memory issue. These may improve our
+webproxy server if we are performing curl to get a really large data that is bigger than the webproxy memory.
