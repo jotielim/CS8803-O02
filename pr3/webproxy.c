@@ -38,6 +38,10 @@ static gfserver_t gfs;
 static void _sig_handler(int signo){
     if (signo == SIGINT || signo == SIGTERM){
         gfserver_stop(&gfs);
+
+        // clean up curl
+        curl_global_cleanup();
+
         exit(signo);
     }
 }
@@ -103,7 +107,4 @@ int main(int argc, char **argv) {
 
     /*Loops forever*/
     gfserver_serve(&gfs);
-
-    // clean up curl
-    curl_global_cleanup();
 }
