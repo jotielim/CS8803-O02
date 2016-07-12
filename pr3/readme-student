@@ -34,3 +34,22 @@ webproxy server if we are performing curl to get a really large data that is big
 
 
 ##Part 2
+
+For this part 2, we implemented a cache process that run on the same as the webproxy. The cache and webproxy
+communicate via shared memory. The inter process communication is implemented using the POSIX API.
+
+When the webproxy is started, we initialize a job queue that is used for job request. In addition, given the number of
+segment and the segment size, we create the shared memories that will be used to receive file contents. The webproxy
+then tries to open the message queue. If it doesn't exist, it'll sleep for 1 second and loop until the message queue
+is initialized. The webproxy also handles when SIGINT or SIGKILL is signaled. When it happens, it will free the shared
+memory and free the job queue.
+
+When the cache process is started, we initialize the cache, create the given number of threads, and then create the
+message queue. Then we start the cache process. The cache process will append new request to the job queue. When the
+job queue is not empty, we pop the queue and retrieve the content of the file from cache. When the file is not in the
+cache, we send FILE_NOT_FOUND instead of getting from the server. The cache process handles SIGINT or SIGKILL signal.
+When either signal occur, it will free the message queue and clear the cache.
+
+We can improve this project by handling when the file is not in the cache. In that case, we need to fetch the file on
+the server and put it in the cache. If we have limited cache, we can prune the cache by discading least recent used
+item.
