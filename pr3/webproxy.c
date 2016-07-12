@@ -6,13 +6,17 @@
 #include <stdio.h>
 #include <signal.h>
 #include <curl/curl.h>
+#include <semaphore.h>
 
 #include "gfserver.h"
+#include "shm_channel.h"
 
 #define USAGE                                                                   \
 "usage:\n"                                                                      \
 "  webproxy [options]\n"                                                        \
 "options:\n"                                                                    \
+"  -n [nsegemtns]      Number of segments to use in communication with cache\n" \
+"  -z [segsize]        The size (in bytes) of the segments.\n"                  \
 "  -p [listen_port]    Listen port (Default: 8888)\n"                           \
 "  -t [thread_count]   Num worker threads (Default: 1, Range: 1-1000)\n"        \
 "  -s [server]         The server to connect to (Default: Udacity S3 instance)" \
@@ -23,6 +27,8 @@
 
 /* OPTIONS DESCRIPTOR ====================================================== */
 static struct option gLongOptions[] = {
+        {"nsegments",     required_argument,      NULL,           'n'},
+        {"size",          required_argument,      NULL,           'z'},
         {"port",          required_argument,      NULL,           'p'},
         {"thread-count",  required_argument,      NULL,           't'},
         {"server",        required_argument,      NULL,           's'},
@@ -42,6 +48,9 @@ static void _sig_handler(int signo){
         // clean up curl
         curl_global_cleanup();
 
+        proxy_ipc_destroy();
+        shm_destroy();
+
         exit(signo);
     }
 }
@@ -49,6 +58,8 @@ static void _sig_handler(int signo){
 /* Main ========================================================= */
 int main(int argc, char **argv) {
     int i, option_char = 0;
+    int nsegments = 1;
+    int segsize = 32;
     unsigned short port = 8888;
     unsigned short nworkerthreads = 1;
     char *server = "s3.amazonaws.com/content.udacity-data.com";
@@ -64,8 +75,14 @@ int main(int argc, char **argv) {
     }
 
     // Parse and set command line arguments
-    while ((option_char = getopt_long(argc, argv, "p:t:s:h", gLongOptions, NULL)) != -1) {
+    while ((option_char = getopt_long(argc, argv, "n:z:p:t:s:h", gLongOptions, NULL)) != -1) {
         switch (option_char) {
+            case 'n': // number of segments
+                nsegments = atoi(optarg);
+                break;
+            case 'z': // size of segments
+                segsize = atoi(optarg);
+                break;
             case 'p': // listen-port
                 port = atoi(optarg);
                 break;
@@ -94,6 +111,8 @@ int main(int argc, char **argv) {
     curl_global_init(CURL_GLOBAL_ALL);
 
     /* SHM initialization...*/
+    shm_init();
+    proxy_ipc_init(nsegments, segsize);
 
     /*Initializing server*/
     gfserver_init(&gfs, nworkerthreads);
@@ -101,7 +120,7 @@ int main(int argc, char **argv) {
     /*Setting options*/
     gfserver_setopt(&gfs, GFS_PORT, port);
     gfserver_setopt(&gfs, GFS_MAXNPENDING, 10);
-    gfserver_setopt(&gfs, GFS_WORKER_FUNC, handle_with_curl);
+    gfserver_setopt(&gfs, GFS_WORKER_FUNC, handle_with_cache);
     for(i = 0; i < nworkerthreads; i++)
         gfserver_setopt(&gfs, GFS_WORKER_ARG, i, server);
 

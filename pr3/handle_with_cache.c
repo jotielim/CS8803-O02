@@ -4,53 +4,68 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <semaphore.h>
 
 #include "gfserver.h"
+#include "shm_channel.h"
 
 //Replace with an implementation of handle_with_cache and any other
 //functions you may need.
 
-ssize_t handle_with_cache(gfcontext_t *ctx, char *path, void* arg){
-	int fildes;
-	size_t file_len, bytes_transferred;
-	ssize_t read_len, write_len;
-	char buffer[4096];
-	char *data_dir = arg;
+extern shm_data_t *g_shm_array;
 
-	strcpy(buffer,data_dir);
-	strcat(buffer,path);
+ssize_t handle_with_cache(gfcontext_t *ctx, char *path, void* arg) {
+    int shmid, segsize;
+    size_t buffsize, bytes_read, filelen, readlen;
 
-	if( 0 > (fildes = open(buffer, O_RDONLY))){
-		if (errno == ENOENT)
-			/* If the file just wasn't found, then send FILE_NOT_FOUND code*/ 
-			return gfs_sendheader(ctx, GF_FILE_NOT_FOUND, 0);
-		else
-			/* Otherwise, it must have been a server error. gfserver library will handle*/ 
-			return SERVER_FAILURE;
-	}
+    shmid = pop_shm();
 
-	/* Calculating the file size */
-	file_len = lseek(fildes, 0, SEEK_END);
-	lseek(fildes, 0, SEEK_SET);
+    cache_request_t request;
+    strcpy(request.key, path);
+    get_shm_name(shmid, request.shmname, sizeof(request.shmname));
+    segsize = get_segsize();
+    request.segsize = segsize;
 
-	gfs_sendheader(ctx, GF_OK, file_len);
+    if (send_cache_request(&request) == -1) {
+        fprintf(stderr, "Unable to send message %s\n", path);
+        return gfs_sendheader(ctx, GF_ERROR, 0);
+    }
 
-	/* Sending the file contents chunk by chunk. */
-	bytes_transferred = 0;
-	while(bytes_transferred < file_len){
-		read_len = read(fildes, buffer, 4096);
-		if (read_len <= 0){
-			fprintf(stderr, "handle_with_file read error, %zd, %zu, %zu", read_len, bytes_transferred, file_len );
-			return SERVER_FAILURE;
-		}
-		write_len = gfs_send(ctx, buffer, read_len);
-		if (write_len != read_len){
-			fprintf(stderr, "handle_with_file write error");
-			return SERVER_FAILURE;
-		}
-		bytes_transferred += write_len;
-	}
+    // calculate the size of data we can read
+    buffsize = segsize - (2 * sizeof(sem_t)) - sizeof(int);
 
-	return bytes_transferred;
+    // wait until there is a response from cache
+    sem_wait(&(g_shm_array[shmid]->full));
+    filelen = g_shm_array[shmid]->filesize;
+    sem_post(&(g_shm_array[shmid]->empty));
+
+    if (filelen == FILE_NOT_FOUND) {
+        fprintf(stderr, "File not found: %s\n", path);
+        add_shm(shmid);
+        return gfs_sendheader(ctx, GF_FILE_NOT_FOUND, 0);
+    }
+
+    gfs_sendheader(ctx, GF_OK, filelen);
+
+    bytes_read = 0;
+
+    while (bytes_read < filelen) {
+        sem_wait(&(g_shm_array[shmid]->full));
+
+        // read the data
+        if ((filelen - bytes_read) > buffsize) {
+            readlen = buffsize;
+        } else {
+            readlen = filelen - bytes_read;
+        }
+
+        gfs_send(ctx, &(g_shm_array[shmid]->data), readlen);
+        bytes_read += readlen;
+
+        sem_post(&(g_shm_array[shmid]->empty));
+    }
+
+    add_shm(shmid);
+
+    return bytes_read;
 }
-

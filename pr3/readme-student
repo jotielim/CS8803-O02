@@ -31,3 +31,6 @@ We can directly send the received bytes to the client using `gfs_sendheader` ins
 `write_memory_callback`. However, we still need to first check if the file exists before directly sending the curl
 response. Another option is to create and append to a file when we get out of memory issue. These may improve our
 webproxy server if we are performing curl to get a really large data that is bigger than the webproxy memory.
+
+
+##Part 2
