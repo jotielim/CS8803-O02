@@ -12,7 +12,7 @@
 //Replace with an implementation of handle_with_cache and any other
 //functions you may need.
 
-extern shm_data_t *g_shm_array;
+extern shm_data_t *g_shm_array; // from shm_channel.c
 
 ssize_t handle_with_cache(gfcontext_t *ctx, char *path, void* arg) {
     int shmid, segsize;
@@ -22,7 +22,7 @@ ssize_t handle_with_cache(gfcontext_t *ctx, char *path, void* arg) {
 
     cache_request_t request;
     strcpy(request.key, path);
-    get_shm_name(shmid, request.shmname, sizeof(request.shmname));
+    get_shmname(shmid, request.shmname, sizeof(request.shmname));
     segsize = get_segsize();
     request.segsize = segsize;
 
@@ -65,6 +65,7 @@ ssize_t handle_with_cache(gfcontext_t *ctx, char *path, void* arg) {
         sem_post(&(g_shm_array[shmid]->empty));
     }
 
+    // put it back on the free queue
     add_shm(shmid);
 
     return bytes_read;

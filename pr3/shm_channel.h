@@ -1,14 +1,14 @@
 #ifndef _SHM_CHANNEL_H_
 #define _SHM_CHANNEL_H_
 
-#define DEFAUL_SEGMENT_SIZE 1024
+#define DEFAULT_SEGMENT_SIZE 1024
 #define FILE_NOT_FOUND -1
 #define IPC_ERROR -1
 #define SHM_ERROR -1
 
 #define QUEUE_NAME "/my-cache-name"
 #define QUEUE_PERMISSIONS 0644
-#define SHM_NAME "my-shm-name-%d"
+#define SHM_NAME "/my-shm-name-%d"
 #define SHM_PERMISSIONS 0644
 
 typedef struct {
@@ -54,7 +54,7 @@ int send_cache_request(cache_request_t *request);
 int receive_cache_request(cache_request_t *request, size_t size);
 
 // get the name of the POSIX shm
-void get_shm_name(int shmid, char* shmname, size_t length);
+void get_shmname(int shmid, char* shmname, size_t length);
 // get the size of each shm
 int get_segsize();
 

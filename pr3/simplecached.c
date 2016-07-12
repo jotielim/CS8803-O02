@@ -54,7 +54,7 @@ static struct option gLongOptions[] = {
 void workerthread_init(int nthreads);
 
 // callback for created thread
-static void* cache_thread(void *args);
+static void* cache_thread(void *arg);
 
 // function to send FILE_NOT_FOUND
 void send_cache_filenotfound(int segid, char *shmname, int segsize);
@@ -143,7 +143,7 @@ void workerthread_init(int nthreads) {
     }
 }
 
-static void* cache_thread(void *args) {
+static void* cache_thread(void *arg) {
     int fildes;
 
     for (;;) {
@@ -249,4 +249,6 @@ int serve_cache() {
             add_job(request);
         }
     }
+
+    return 0;
 }

@@ -180,7 +180,7 @@ int receive_cache_request(cache_request_t *request, size_t size) {
     return mq_receive(g_mqd, (char *)request, size, NULL);
 }
 
-void get_shm_name(int shmid, char* shmname, size_t length) {
+void get_shmname(int shmid, char* shmname, size_t length) {
     sprintf(shmname, SHM_NAME, shmid);
 }
 

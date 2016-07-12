@@ -59,7 +59,7 @@ static void _sig_handler(int signo){
 int main(int argc, char **argv) {
     int i, option_char = 0;
     int nsegments = 1;
-    int segsize = 32;
+    int segsize = DEFAULT_SEGMENT_SIZE;
     unsigned short port = 8888;
     unsigned short nworkerthreads = 1;
     char *server = "s3.amazonaws.com/content.udacity-data.com";
