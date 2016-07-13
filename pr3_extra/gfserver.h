@@ -1,8 +1,11 @@
-#ifndef __GETFILE_SERVER_H__
-#define __GETFILE_SERVER_H__
+#ifndef __GF_SERVER_H__
+#define __GF_SERVER_H__
 
-#include <pthread.h>
-#include "steque.h"
+
+/*
+ * gfserver is a server library for transferring files using the GETFILE
+ * protocol.
+ */
 
 #define MAX_REQUEST_LEN 128
 
@@ -16,116 +19,72 @@ typedef int gfstatus_t;
 #define SERVER_FAILURE (-1)
 #endif // SERVER_FAILURE
 
-typedef struct _gfserver_t gfserver_t;
-typedef struct _gfcontext_t gfcontext_t;
-
-struct _gfserver_t{
-	steque_t req_queue;
-	unsigned short port;
-	int max_npending;
-	int nthreads;
-	int socket_fd;
-
-	ssize_t (*worker_func)(gfcontext_t *, char *, void*);
-
-	gfcontext_t *contexts;
-	pthread_mutex_t queue_lock;
-	pthread_cond_t req_inserted;
-};
-
-struct _gfcontext_t{
-	pthread_t thread;
-	void *arg;
-	gfserver_t *gfs;
-
-	int socket;
-	size_t file_len;
-	size_t bytes_transferred;
-
-	char *protocol;
-	char *method;
-	char *path;
-	char request[MAX_REQUEST_LEN];	
-};
-
-typedef enum{
-  GFS_PORT,
-  GFS_MAXNPENDING,
-  GFS_WORKER_FUNC,
-  GFS_WORKER_ARG
-} gfserver_option_t;
+typedef struct gfserver_t gfserver_t;
+typedef struct gfcontext_t gfcontext_t;
 
 /* 
- * Initializes the input gfserver_t object to use nthreads.
+ * This function must be the first one called as part of 
+ * setting up a server.  It returns a gfserver_t handle which should be
+ * passed into all subsequent library calls of the form gfserver_*.  It
+ * is not needed for the gfs_* call which are intended to be called from
+ * the handler callback.
  */
-void gfserver_init(gfserver_t *gfh, int nthreads);
-
-/* 
- * Sets options for the gfserver_t object. The table below
- * lists the values for option in the left column and the
- * additional arguments in the right.
- *
- * GFS_PORT 	  		unsigned short indicating the port on which 
- * 						the server should receive connections.
- *
- * GFS_MAXNPENDING 	 	int indicating the maximum number of pending
- * 						connections the receiving socket should permit.
- *
- * GFS_WORKER_FUNC 		a function pointer with the signature
- * 						ssize_t (*)(gfcontext_t *, char *, void*);
- *
- *						The first argument contains the needed context
- *						information for the server and should be passed
- *						into calls to gfs_sendheader and gfs_send.
- *						
- *						The second argument is the path of the requested
- *						resource.
- * 
- * 						The third argument is the argument registered for
- *						this particular thread with the GFS_WORKER_ARG
- *						option.
- *
- *						Returning a negative number will cause the 
- *						gfserver library to send an error message to the
- *						client.  Otherwise, gfserver will assume that
- *						this function has performed all the necessary 
- *						communication.
- *
- *
- * GFS_WORKER_ARG		This option is followed by two arguments, an int
- *						indicating the thread index [0,...,nthreads-1] and
- * 						a pointer which will be passed into the callback
- * 						registered via the GFS_WORKER_FUNC option on this 
- *						thread.
- *						
- */
-void gfserver_setopt(gfserver_t *gfh, gfserver_option_t option, ...);
+gfserver_t *gfserver_create();
 
 /*
- * Connects the server to the socket so that it can begin handling
- * requests.  
+ * Sets the port at which the server will listen for connections.
  */
-void gfserver_serve(gfserver_t *gfh);
+void gfserver_set_port(gfserver_t *gfs, unsigned short port);
 
 /*
- * Shuts down the server associated with the input gfserver_t object.  
+ * Sets the maximum number of pending connections which the server
+ * will tolerate before rejecting connection requests.
  */
-void gfserver_stop(gfserver_t *gfh);
+void gfserver_set_maxpending(gfserver_t *gfs, int max_npending);
+
+
+/*
+ * Sets the handler callback, a function that will be called for each each
+ * request.  As arguments, this function receives:
+ * - a gfcontext_t handle which it must pass into the gfs_* functions that 
+ * 	 it calls as it handles the response.
+ * - the requested path
+ * - the pointer specified in the gfserver_set_handlerarg option.
+ * The handler should only return a negative value to signal an error.
+ */
+void gfserver_set_handler(gfserver_t *gfs, ssize_t (*handler)(gfcontext_t *, char *, void*));
+
+/*
+ * Sets the third argument for calls to the handler callback.
+ */
+void gfserver_set_handlerarg(gfserver_t *gfs, void* arg);
+
+/*
+ * Starts the server.  Does not return.
+ */
+void gfserver_serve(gfserver_t *gfs);
+
+void gfserver_stop(gfserver_t *gfs);
 
 /*
  * Sends to the client the Getfile header containing the appropriate 
  * status and file length for the given inputs.  This function should
- * only be called from within a callback registered with the 
- * GFS_WORKER_FUNC option.
+ * only be called from within a callback registered gfserver_set_handler.
  */
 ssize_t gfs_sendheader(gfcontext_t *ctx, gfstatus_t status, size_t file_len);
 
 /*
  * Sends size bytes starting at the pointer data to the client 
  * This function should only be called from within a callback registered 
- * with the GFS_WORKER_FUNC option.  It returns once the data has been
- * written to the socket.
+ * with gfserver_set_handler.  It returns once the data has been
+ * sent.
  */
 ssize_t gfs_send(gfcontext_t *ctx, void *data, size_t size);
+
+/*
+ * Aborts the connection to the client associated with the input
+ * gfcontext_t.
+ */
+void gfs_abort(gfcontext_t *ctx);
 
 #endif

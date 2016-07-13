@@ -9,9 +9,12 @@ endif
 
 PROXY_OBJ := webproxy.o steque.o
 
-all: webproxy simplecached
+all: gfclient_download webproxy simplecached
 
-webproxy: $(PROXY_OBJ) handle_with_cache.o handle_with_curl.o shm_channel.o gfserver.o 
+gfclient_download: gfclient.o workload.o gfclient_download.o steque.o
+	$(CC) -o $@ $(CFLAGS) $^ $(LDFLAGS)
+
+webproxy: $(PROXY_OBJ) handler.o content.o handle_with_cache.o handle_with_curl.o shm_channel.o gfserver.o
 	$(CC) -o $@ $(CFLAGS) $(CURL_CFLAGS) $^ $(LDFLAGS) $(CURL_LIBS)
 
 simplecached: simplecache.o simplecached.o shm_channel.o steque.o
@@ -20,6 +23,4 @@ simplecached: simplecache.o simplecached.o shm_channel.o steque.o
 .PHONY: clean
 
 clean:
-	mv gfserver.o gfserver.tmpo 
-	rm -rf *.o webproxy simplecached
-	mv gfserver.tmpo gfserver.o  	
+	rm -rf *.o webproxy simplecached gfclient_download

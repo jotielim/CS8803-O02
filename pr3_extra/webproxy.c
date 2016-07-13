@@ -38,12 +38,14 @@ static struct option gLongOptions[] = {
 
 extern ssize_t handle_with_curl(gfcontext_t *ctx, char *path, void* arg);
 extern ssize_t handle_with_cache(gfcontext_t *ctx, char *path, void* arg);
+extern void worker_threads_init(int nthreads);
 
-static gfserver_t gfs;
+static gfserver_t *gfs;
 
 static void _sig_handler(int signo){
     if (signo == SIGINT || signo == SIGTERM){
-        gfserver_stop(&gfs);
+//        gfserver_stop(&gfs);
+        gfserver_stop(gfs);
 
         // clean up curl
         curl_global_cleanup();
@@ -57,7 +59,7 @@ static void _sig_handler(int signo){
 
 /* Main ========================================================= */
 int main(int argc, char **argv) {
-    int i, option_char = 0;
+    int option_char = 0;
     int nsegments = 1;
     int segsize = DEFAULT_SEGMENT_SIZE;
     unsigned short port = 8888;
@@ -114,16 +116,17 @@ int main(int argc, char **argv) {
     shm_init();
     proxy_ipc_init(nsegments, segsize);
 
+    worker_threads_init(nworkerthreads);
+
     /*Initializing server*/
-    gfserver_init(&gfs, nworkerthreads);
+    gfs = gfserver_create();
 
     /*Setting options*/
-    gfserver_setopt(&gfs, GFS_PORT, port);
-    gfserver_setopt(&gfs, GFS_MAXNPENDING, 10);
-    gfserver_setopt(&gfs, GFS_WORKER_FUNC, handle_with_cache);
-    for(i = 0; i < nworkerthreads; i++)
-        gfserver_setopt(&gfs, GFS_WORKER_ARG, i, server);
+    gfserver_set_port(gfs, port);
+    gfserver_set_maxpending(gfs, 10);
+    gfserver_set_handler(gfs, handle_with_cache);
+    gfserver_set_handlerarg(gfs, server);
 
     /*Loops forever*/
-    gfserver_serve(&gfs);
+    gfserver_serve(gfs);
 }
