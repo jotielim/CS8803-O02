@@ -12,6 +12,7 @@
 //Replace with an implementation of handle_with_cache and any other
 //functions you may need.
 
+extern ssize_t handle_with_curl(gfcontext_t *ctx, char *path, void* arg);
 extern shm_data_t *g_shm_array; // from shm_channel.c
 
 ssize_t handle_with_cache(gfcontext_t *ctx, char *path, void* arg) {
@@ -40,9 +41,16 @@ ssize_t handle_with_cache(gfcontext_t *ctx, char *path, void* arg) {
     sem_post(&(g_shm_array[shmid]->empty));
 
     if (filelen == FILE_NOT_FOUND) {
-        fprintf(stderr, "File not found: %s\n", path);
+        fprintf(stderr, "File not found in cache: %s\n", path);
+
+        size_t curl_response = handle_with_curl(ctx, path, arg);
+
         add_shm(shmid);
-        return gfs_sendheader(ctx, GF_FILE_NOT_FOUND, 0);
+        if (curl_response == SERVER_FAILURE) {
+            return gfs_sendheader(ctx, GF_FILE_NOT_FOUND, 0);
+        }
+
+        return curl_response;
     }
 
     gfs_sendheader(ctx, GF_OK, filelen);
