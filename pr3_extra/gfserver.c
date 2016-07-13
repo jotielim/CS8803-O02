@@ -254,5 +254,7 @@ void gfserver_stop(gfserver_t *gfs) {
     close(ctx->connfd);
     // clean up and free malloc
     free(ctx);
+
+    close(gfs->listenfd);
     free(gfs);
 }
