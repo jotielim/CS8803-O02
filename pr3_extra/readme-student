@@ -1,55 +1,10 @@
-This is YOUR Readme file.  We will manually review your file looking for:
-
-(1) A summary description of your project design.  If you wish to use
-    grapics, please simply use a URL to point to a JPG or PNG file that
-    we can review.
-
-(2) Any additional observations that you have about what you've done. What
-    created problems for you?  What tests would you have added to the test
-    suite?  If you were going to do this project again, how would you improve it?
-
-
 #Project 3
 
-##Part 1
+##Extra Credit
 
-Libcurl requires to be globally initialized once. Since we are working on multi-threaded proxy, we need to explicitly
-initialize the libcurl using `curl_global_init()` in webproxy.c. In addition, we also need to clean up curl globally
-using `curl_global_cleanup()` in webproxy.c. We also pass the server as GFS_WORKER_ARG so it can be used by the
-callback `handle_with_curl`.
+I combined pr1 and pr3. The underlying concept is still the same as pr3 part 2 except using source code from pr1 for
+the gfclient_download. I replace the gfserver.o with the source code from pr1 and modify webproxy so it uses that
+code base.
 
-The function `handle_with_curl` performs curl to the given url. When we perform curl using `curl_easy_perform()`, by
-default it will output the data in stdout. Since we want to pass this bytes to the client, we need to provide a write
-function. We can do so by setting the option `CURLOPT_WRITEFUNCTION` and the callback function `write_memory_callback`.
-In `write_memory_callback`, we will store the received bytes in memory, expanding the memory allocation as needed.
-This is better than writing it to a file first, since we are passing the bytes to the client. However, since we are
-storing the chunks of curl data into a variable called `response`, this can cause an issue of insufficient memory if
-the webproxy server does not have big memory hardware, or if we are transferring a file that is bigger than the memory.
-
-If we were going to do this part 1 again, we can improve it by not storing the received data into `response` variable.
-We can directly send the received bytes to the client using `gfs_sendheader` inside the callback
-`write_memory_callback`. However, we still need to first check if the file exists before directly sending the curl
-response. Another option is to create and append to a file when we get out of memory issue. These may improve our
-webproxy server if we are performing curl to get a really large data that is bigger than the webproxy memory.
-
-
-##Part 2
-
-For this part 2, we implemented a cache process that run on the same as the webproxy. The cache and webproxy
-communicate via shared memory. The inter process communication is implemented using the POSIX API.
-
-When the webproxy is started, we initialize a job queue that is used for job request. In addition, given the number of
-segment and the segment size, we create the shared memories that will be used to receive file contents. The webproxy
-then tries to open the message queue. If it doesn't exist, it'll sleep for 1 second and loop until the message queue
-is initialized. The webproxy also handles when SIGINT or SIGKILL is signaled. When it happens, it will free the shared
-memory and free the job queue.
-
-When the cache process is started, we initialize the cache, create the given number of threads, and then create the
-message queue. Then we start the cache process. The cache process will append new request to the job queue. When the
-job queue is not empty, we pop the queue and retrieve the content of the file from cache. When the file is not in the
-cache, we send FILE_NOT_FOUND instead of getting from the server. The cache process handles SIGINT or SIGKILL signal.
-When either signal occur, it will free the message queue and clear the cache.
-
-We can improve this project by handling when the file is not in the cache. In that case, we need to fetch the file on
-the server and put it in the cache. If we have limited cache, we can prune the cache by discading least recent used
-item.
+To compile, use `make clean && make all`. It will produce three executables `webproxy`, `simplecached`, and
+`gfclient_download`.
