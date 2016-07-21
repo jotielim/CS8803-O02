@@ -3,78 +3,88 @@ import os
 import sys
 import argparse
 import json
-import yaml
 import datetime
 from bonnie.submission import Submission
 
+
 def print_report(results):
     for result in results:
-      if 'description' in result:
-        print "Description:", result['description']
-      if 'traceback' in result:
-        print "Traceback:"
-        print result['traceback']
-      if 'output' in result:
-        output = result['output']
-        if 'client_returncode' in output:
-          print "Client Returncode:", output['client_returncode']
-        if 'server_returncode' in output:
-          print "Server Returncode:", output['server_returncode']
-        if 'server_console' in output:
-          print "Server Console:"
-          print output['server_console']
-        if 'client_console' in output:
-          print "Client Console:"
-          print output['client_console']
+        if 'description' in result:
+            print "Description:", result['description']
+        if 'traceback' in result:
+            print "Traceback:"
+            print result['traceback']
+        if 'output' in result:
+            output = result['output']
+            if 'client_returncode' in output:
+                print "Client Returncode:", output['client_returncode']
+            if 'server_returncode' in output:
+                print "Server Returncode:", output['server_returncode']
+            if 'server_console' in output:
+                print "Server Console:"
+                print output['server_console']
+            if 'client_console' in output:
+                print "Client Console:"
+                print output['client_console']
+
 
 def main():
-  parser = argparse.ArgumentParser(description='Submits code to the Udacity site.')
-  parser.add_argument('--provider', choices = ['gt', 'udacity'], default = 'gt')
-  parser.add_argument('--environment', choices = ['local', 'development', 'staging', 'production'], default = 'production')
+    parser = argparse.ArgumentParser(description='Submits code to the Udacity site.')
+    parser.add_argument('quiz', choices=['rpc', 'readme'], default='rpc')
+    parser.add_argument('--provider', choices=['gt', 'udacity'], default='gt')
+    parser.add_argument('--environment', choices=['local', 'development', 'staging', 'production'],
+                        default='production')
 
-  args = parser.parse_args()
+    args = parser.parse_args()
 
-  files = ['minify_via_rpc.c', 'minifyjpeg.h', 'minifyjpeg_clnt.c', 'minifyjpeg_xdr.c', 'minifyjpeg.c', 'minifyjpeg.x', 'minifyjpeg_svc.c']
+    files_map = {
+        'pr4_rpc': ['minify_via_rpc.c', 'minifyjpeg.h', 'minifyjpeg_clnt.c', 'minifyjpeg_xdr.c', 'minifyjpeg.c',
+                    'minifyjpeg.x', 'minifyjpeg_svc.c'],
+        'pr4_readme': ['readme-student.md']
+        }
+    quiz_map = {'rpc': 'pr4_rpc',
+                'readme': 'pr4_readme',
+                }
+    quiz = quiz_map[args.quiz]
 
-  quiz = 'pr4_rpc'
+    submission = Submission('cs8803-02', quiz,
+                            filenames=files_map[quiz],
+                            environment=args.environment,
+                            provider=args.provider)
 
-  submission = Submission('cs8803-02', quiz, 
-                          filenames = files, 
-                          environment = args.environment, 
-                          provider = args.provider)
+    timestamp = "{:%Y-%m-%d-%H-%M-%S}".format(datetime.datetime.now())
 
-  timestamp = "{:%Y-%m-%d-%H-%M-%S}".format(datetime.datetime.now())
+    while not submission.poll():
+        time.sleep(3.0)
 
-  while not submission.poll():
-    time.sleep(3.0)
+    if submission.result():
+        result = submission.result()
 
-  if submission.result():
-    result = submission.result()
+        filename = "%s-result-%s.json" % (quiz, timestamp)
 
-    filename = "%s-result-%s.json" % (quiz, timestamp)
+        with open(filename, "w") as fd:
+            json.dump(result, fd, indent=4, separators=(',', ': '))
 
-    with open(filename, "w") as fd:
-      json.dump(result, fd, indent=4, separators=(',', ': '))
+        for t in result['tests']:
+            description = '{:70s}'.format(t['description'][:69] + ":")
+            passfail = t['output']['passfail']
+            print '%s %s' % (description, passfail.rjust(9))
 
-    for t in result['tests']:
-      description = '{:70s}'.format(t['description'][:69]+":")
-      passfail = t['output']['passfail']
-      print '%s %s' % (description, passfail.rjust(9))
+        print ("(Details available in %s.)" % filename)
 
-    print ("(Details available in %s.)" % filename)
+    elif submission.error_report():
+        error_report = submission.error_report()
 
-  elif submission.error_report():
-    error_report = submission.error_report()
+        filename = "%s-error-report-%s.json" % (quiz, timestamp)
 
-    filename = "%s-error-report-%s.json" % (quiz, timestamp)
+        with open(filename, "w") as fd:
+            json.dump(error_report, fd, indent=4, separators=(',', ': '))
 
-    with open(filename, "w") as fd:
-      json.dump(error_report, fd, indent=4, separators=(',', ': '))
+        print ("Something went wrong.  Please see the error report in %s." % filename)
 
-    print ("Something went wrong.  Please see the error report in %s." % filename)
+    else:
+        print "Unknown error."
 
-  else:
-    print "Unknown error."
 
 if __name__ == '__main__':
-  main()
+    main()
