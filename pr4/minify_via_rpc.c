@@ -44,7 +44,11 @@ void* minify_via_rpc(CLIENT *cl, void* src_val, size_t src_len, size_t *dst_len)
 
     // assign the returned image length to dst_len pointer;
     *dst_len = result->image.image_len;
+    void *data = result->image.image_val;
+
+    // clean up malloc
+    free(result);
 
     // return the modified image
-    return result->image.image_val;
+    return data;
 }
