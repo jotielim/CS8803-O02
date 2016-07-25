@@ -18,7 +18,7 @@ CLIENT* get_minify_client(char *server){
 
     tv.tv_sec = 5; // second
     tv.tv_usec = 0; // microsecond
-    clnt_control(cl, CLSET_TIMEOUT, &tv);
+    clnt_control(cl, CLSET_TIMEOUT, (char*)&tv);
 
     return cl;
 }
